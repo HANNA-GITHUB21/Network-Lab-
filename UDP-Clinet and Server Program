@@ -1,1 +1,134 @@
+//Server.c
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
+#define PORT 8080 // Server port number
+
+int main() {
+    char server_address[] = "localhost";  // Replace with actual IP if needed
+    int sockfd;
+    struct sockaddr_in servaddr, cliaddr;
+
+    // Create a UDP socket
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+
+    // Set server address
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr(server_address);
+    servaddr.sin_port = htons(PORT);
+
+    // Bind the socket to the server address
+    if (bind(sockfd, (const struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Receive a number from the client
+    int num;
+    socklen_t len = sizeof(cliaddr);
+    int recv_size = recvfrom(sockfd, &num, sizeof(num), 0, (struct sockaddr *) &cliaddr, &len);
+    if (recv_size < 0) {
+        perror("recvfrom failed");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Received number from client: %d\n", num);
+
+    // Validate number (1-10)
+    if (num < 1 || num > 10) {
+        printf("Error: Invalid number received. Please send a number between 1 and 10.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Create an array of word representations (replace with your language if needed)
+    const char *number_words[] = {"One", "Two", "Three", "Four", "Five",
+                                  "Six", "Seven", "Eight", "Nine", "Ten"};
+
+    // Send the word representation back to the client
+    const char *word = number_words[num - 1];
+    sendto(sockfd, word, strlen(word), 0, (const struct sockaddr *) &cliaddr, len);
+
+    printf("Sent word representation to client: %s\n", word);
+
+    close(sockfd);
+    return 0;
+}
+
+
+
+
+//Client .c 
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
+#define PORT 8080 // Same port as server
+
+int main() {
+    char server_address[] = "localhost";  // Replace with server IP if needed
+    int sockfd;
+    struct sockaddr_in servaddr;
+
+    // Create a UDP socket
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+
+    // Set server address
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr(server_address);
+    servaddr.sin_port = htons(PORT);
+
+    // Get a number from the user
+    int num;
+    printf("Enter a number between 1 and 10: ");
+    if (scanf("%d", &num) != 1 || num < 1 || num > 10) {
+        printf("Error: Invalid input. Please enter a number between 1 and 10.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Send the number to the server
+    int send_size = sendto(sockfd, &num, sizeof(num), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+    if (send_size < 0) {
+        perror("sendto failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Receive the word representation from the server
+    char word[100];  // Buffer for receiving the word
+    socklen_t len = sizeof(servaddr);
+    int recv_size = recvfrom(sockfd, word, sizeof(word), 0, (struct sockaddr *) &servaddr, &len);
+    if (recv_size < 0) {
+        perror("recvfrom failed");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Received word representation from server: %s\n", word);
+
+    close(sockfd);
+    return 0;
+}
 
